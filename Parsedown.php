@@ -19,6 +19,8 @@ class Parsedown
 
     const version = '1.6.0';
 
+    private $headingSlugs = array();
+
     # ~
 
     function text($text)
@@ -464,6 +466,45 @@ class Parsedown
         return $Block;
     }
 
+    protected function _original_slugify($text)
+    {
+        $slug = trim($text);
+        $slug = strtr($slug, ' ', '-');
+        $slug = strtolower($slug);
+
+        return preg_replace('/[^a-z0-9_-]/', '', $slug);
+    }
+
+    protected function slugify($input) {
+       // Enable if you want to wholly remove the contents of (bracketed) text.
+       // $input = preg_replace('/\(.*?\)/', '', $input);
+       $input = strtr($input, '_-', '  ');
+       $input = preg_replace('/\s*&\s*/', ' And', $input);
+       $input = preg_replace("/'+/", '', $input);
+       $input = preg_replace('/[^A-Za-z0-9_-]+/', '-', $input);
+       $input = trim($input, '-');
+       // from http://stackoverflow.com/a/35719689
+       return strtolower(preg_replace(array('/([a-z\d])([A-Z])/', '/([^-])([A-Z][a-z])/'), '$1-$2', $input));
+    }
+
+    protected function getHeadingId($text)
+    {
+        $slug           = $this->slugify($text);
+        $attributeId    = $slug;
+
+        if (!isset($this->headingSlugs[$slug])) {
+            $this->headingSlugs[$slug] = 1;
+        }
+
+        if ($this->headingSlugs[$slug] > 1) {
+            $attributeId .= '-'.$this->headingSlugs[$slug];
+        }
+
+        $this->headingSlugs[$slug]++;
+
+        return $attributeId;
+    }
+
     #
     # Header
 
@@ -490,6 +531,9 @@ class Parsedown
                     'name' => 'h' . min(6, $level),
                     'text' => $text,
                     'handler' => 'line',
+                    'attributes' => array(
+                        'id' => $this->getHeadingId($text),
+                    ),
                 ),
             );
 
